@@ -1,8 +1,8 @@
 package Dao;
-
 import Model.Desarrollador;
 import Model.Proyecto;
 import jakarta.persistence.*;
+import java.util.ArrayList;
 import java.util.List;
 
 public class DesarrolladorDao {
@@ -11,14 +11,12 @@ public class DesarrolladorDao {
     public DesarrolladorDao(EntityManager em) {
         this.em = em;
     }
-
     public void insertarDesarrollador(Desarrollador d) {
         em.getTransaction().begin();
         em.persist(d);
         em.getTransaction().commit();
-        System.out.println("Desarrollador insertado: " + d.getNombre());
+        System.out.println("Desarrollador insertado: " + d.getNombre() + " (ID: " + d.getId() + ")");
     }
-
     public void actualizar(Desarrollador d) {
         em.getTransaction().begin();
         Desarrollador existente = em.find(Desarrollador.class, d.getId());
@@ -30,13 +28,11 @@ public class DesarrolladorDao {
         em.getTransaction().commit();
         System.out.println("Desarrollador actualizado con ID: " + d.getId());
     }
-
     public void borrar(long id) {
         em.getTransaction().begin();
         Desarrollador d = em.find(Desarrollador.class, id);
         if (d != null) {
-
-            for (Proyecto p : d.getProyectos()) {
+            for (Proyecto p : new ArrayList<>(d.getProyectos())) {
                 p.getDesarrolladores().remove(d);
             }
             d.getProyectos().clear();
@@ -52,11 +48,10 @@ public class DesarrolladorDao {
         if (d != null && p != null && !p.getDesarrolladores().contains(d)) {
             p.getDesarrolladores().add(d);
             d.getProyectos().add(p);
+            System.out.println("Asignado: " + d.getNombre() + " -> " + p.getNombre());
         }
         em.getTransaction().commit();
-        System.out.println("Asignado: Desarrollador " + idDesarrollador + " -> Proyecto " + idProyecto);
     }
-
     public void eliminarAsignacion(long idDesarrollador, long idProyecto) {
         em.getTransaction().begin();
         Desarrollador d = em.find(Desarrollador.class, idDesarrollador);
@@ -72,11 +67,15 @@ public class DesarrolladorDao {
         Desarrollador d = em.find(Desarrollador.class, idDesarrollador);
         if (d != null) {
             List<Proyecto> lista = d.getProyectos();
+            if (lista.isEmpty()) {
+                System.out.println("El desarrollador " + idDesarrollador + " no tiene proyectos asignados.");
+            }
             for (Proyecto p : lista) {
                 System.out.println("Proyecto del desarrollador " + idDesarrollador + ": " + p);
             }
             return lista;
         }
+        System.out.println("Desarrollador con ID " + idDesarrollador + " no encontrado.");
         return List.of();
     }
     public double obtenerMediaExperiencia() {
@@ -86,14 +85,23 @@ public class DesarrolladorDao {
         System.out.println("Media de años de experiencia: " + media);
         return media;
     }
-
     public List<Desarrollador> obtenerSinProyectos() {
         TypedQuery<Desarrollador> query = em.createQuery(
-                "SELECT d FROM Desarrollador d WHERE SIZE(d.proyectos) = 0", Desarrollador.class);
-        List<Desarrollador> lista = query.getResultList();
-        for (Desarrollador d : lista) {
-            System.out.println("Desarrollador sin proyectos: " + d);
+                "SELECT d FROM Desarrollador d", Desarrollador.class);
+        List<Desarrollador> todos = query.getResultList();
+        List<Desarrollador> sinProyectos = new ArrayList<>();
+        for (Desarrollador d : todos) {
+            if (d.getProyectos().isEmpty()) {
+                sinProyectos.add(d);
+                System.out.println("Desarrollador sin proyectos: " + d);
+            }
         }
-        return lista;
+        if (sinProyectos.isEmpty()) {
+            System.out.println("(Todos los desarrolladores tienen al menos un proyecto asignado)");
+        }
+        return sinProyectos;
+    }
+    public List<Desarrollador> obtenerTodos() {
+        return em.createQuery("SELECT d FROM Desarrollador d", Desarrollador.class).getResultList();
     }
 }
